@@ -9,6 +9,7 @@ import PricingSection from "@/components/pricing-section"
 import StatsSection from "@/components/stats-section"
 import ServerStatus from "@/components/server-status"
 import { useRef } from "react"
+import FirestoreTest from "@/components/firestore-test"
 
 export default function HomePage() {
   const platformSelectorRef = useRef<HTMLDivElement>(null)
@@ -66,6 +67,9 @@ export default function HomePage() {
 
       {/* Server Status Section */}
       <ServerStatus />
+
+      {/* Firestore Test Section */}
+      <FirestoreTest />
 
       {/* Call to Action Section */}
       <section className="py-20 bg-gradient-to-br from-purple-900 to-slate-900 text-white text-center">
