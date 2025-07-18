@@ -11,10 +11,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-console.log("Firebase Config:", firebaseConfig)
-console.log("API Key:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "Set" : "Not Set")
-console.log("Auth Domain:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? "Set" : "Not Set")
-console.log("Project ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? "Set" : "Not Set")
+// Log the configuration to help diagnose missing environment variables
+console.log("Firebase Config being used:", firebaseConfig)
+console.log("API Key status:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "Set" : "NOT SET")
+console.log("Auth Domain status:", process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? "Set" : "NOT SET")
+console.log("Project ID status:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? "Set" : "NOT SET")
+console.log("Storage Bucket status:", process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ? "Set" : "NOT SET")
+console.log("Messaging Sender ID status:", process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ? "Set" : "NOT SET")
+console.log("App ID status:", process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? "Set" : "NOT SET")
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
