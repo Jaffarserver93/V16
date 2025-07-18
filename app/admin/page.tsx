@@ -5,13 +5,13 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth"
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore"
+import { collection, getDocs, query, orderBy } from "firebase/firestore" // Import 'where'
 import { auth, db } from "@/lib/firebase"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, Lock, LayoutDashboard, LogOut, Users, ShoppingCart, Clock } from "lucide-react"
+import { User, Lock, LayoutDashboard, LogOut, Users, ShoppingCart, Clock, Search, XCircle } from "lucide-react" // Import Search and XCircle
 import { motion } from "framer-motion"
 import { updateOrderStatus } from "@/actions/order"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,7 +29,7 @@ interface Order {
     seconds: number
     nanoseconds: number
   }
-  status: "pending" | "confirmed" | "cancelled" // Add this line
+  status: "pending" | "confirmed" | "cancelled"
   id: string // Add this line for Firestore document ID
 }
 
@@ -40,7 +40,9 @@ export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [totalUsers, setTotalUsers] = useState<number | null>(null)
   const [totalOrders, setTotalOrders] = useState<number | null>(null)
-  const [recentOrders, setRecentOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([]) // Store all orders for searching
+  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]) // Orders currently displayed
+  const [searchOrderId, setSearchOrderId] = useState("")
   const [loadingData, setLoadingData] = useState(true)
   const router = useRouter()
 
@@ -53,7 +55,8 @@ export default function AdminPage() {
       } else {
         setTotalUsers(null)
         setTotalOrders(null)
-        setRecentOrders([])
+        setAllOrders([])
+        setDisplayedOrders([])
       }
     })
     return () => unsubscribe()
@@ -66,14 +69,13 @@ export default function AdminPage() {
       const usersSnapshot = await getDocs(collection(db, "users"))
       setTotalUsers(usersSnapshot.size)
 
-      // Fetch total orders and recent orders
+      // Fetch all orders
       const ordersRef = collection(db, "orders")
-      const ordersSnapshot = await getDocs(ordersRef)
-      setTotalOrders(ordersSnapshot.size)
-
-      const recentOrdersQuery = query(ordersRef, orderBy("timestamp", "desc"), limit(5))
-      const recentOrdersSnapshot = await getDocs(recentOrdersQuery)
-      setRecentOrders(recentOrdersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order))
+      const ordersSnapshot = await getDocs(query(ordersRef, orderBy("timestamp", "desc"))) // Fetch all, then filter
+      const fetchedOrders = ordersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Order)
+      setAllOrders(fetchedOrders)
+      setDisplayedOrders(fetchedOrders.slice(0, 5)) // Display only recent 5 by default
+      setTotalOrders(fetchedOrders.length)
     } catch (err) {
       console.error("Error fetching admin data:", err)
       setError("Failed to load data. Please try again.")
@@ -115,17 +117,34 @@ export default function AdminPage() {
     try {
       const result = await updateOrderStatus(orderId, newStatus)
       if (result.success) {
-        // Optimistically update UI or refetch data
-        setRecentOrders((prevOrders) =>
-          prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)),
+        // Update allOrders and then re-filter displayedOrders
+        setAllOrders((prevAllOrders) =>
+          prevAllOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)),
         )
-        // Optionally, show a toast notification
+        // Re-apply search filter if any
+        if (searchOrderId) {
+          handleSearch(searchOrderId)
+        } else {
+          setDisplayedOrders(
+            allOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)).slice(0, 5),
+          )
+        }
       } else {
         setError(result.message)
       }
     } catch (err) {
       console.error("Error calling updateOrderStatus:", err)
       setError("An unexpected error occurred while updating status.")
+    }
+  }
+
+  const handleSearch = (searchTerm: string) => {
+    setSearchOrderId(searchTerm)
+    if (searchTerm.trim() === "") {
+      setDisplayedOrders(allOrders.slice(0, 5)) // Reset to recent 5 if search is cleared
+    } else {
+      const filtered = allOrders.filter((order) => order.orderId.toLowerCase().includes(searchTerm.toLowerCase()))
+      setDisplayedOrders(filtered)
     }
   }
 
@@ -259,8 +278,33 @@ export default function AdminPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {recentOrders.length === 0 ? (
-                    <p className="text-white/70">No recent orders found.</p>
+                  <div className="mb-6">
+                    <div className="relative flex items-center">
+                      <Input
+                        type="text"
+                        placeholder="Search by Order ID..."
+                        value={searchOrderId}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        className="w-full bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:ring-purple-500 pr-10"
+                      />
+                      {searchOrderId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSearch("")}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {!searchOrderId && (
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+                      )}
+                    </div>
+                  </div>
+
+                  {displayedOrders.length === 0 ? (
+                    <p className="text-white/70">No orders found matching your search.</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left table-auto">
@@ -275,8 +319,8 @@ export default function AdminPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {recentOrders.map((order) => (
-                            <tr key={order.orderId} className="border-b border-white/10 last:border-b-0">
+                          {displayedOrders.map((order) => (
+                            <tr key={order.id} className="border-b border-white/10 last:border-b-0">
                               <td className="py-3 px-4 text-white text-sm font-mono">{order.orderId}</td>
                               <td className="py-3 px-4 text-white text-sm">{order.planName}</td>
                               <td className="py-3 px-4 text-white text-sm">
