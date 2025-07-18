@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, Lock, LayoutDashboard, LogOut, Users, ShoppingCart, Clock } from "lucide-react"
 import { motion } from "framer-motion"
+import { updateOrderStatus } from "@/actions/order"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Order {
   orderId: string
@@ -27,6 +29,8 @@ interface Order {
     seconds: number
     nanoseconds: number
   }
+  status: "pending" | "confirmed" | "cancelled" // Add this line
+  id: string // Add this line for Firestore document ID
 }
 
 export default function AdminPage() {
@@ -104,6 +108,25 @@ export default function AdminPage() {
     if (!timestamp) return "N/A"
     const date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000)
     return date.toLocaleString()
+  }
+
+  const handleStatusChange = async (orderId: string, newStatus: "pending" | "confirmed" | "cancelled") => {
+    setError(null)
+    try {
+      const result = await updateOrderStatus(orderId, newStatus)
+      if (result.success) {
+        // Optimistically update UI or refetch data
+        setRecentOrders((prevOrders) =>
+          prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)),
+        )
+        // Optionally, show a toast notification
+      } else {
+        setError(result.message)
+      }
+    } catch (err) {
+      console.error("Error calling updateOrderStatus:", err)
+      setError("An unexpected error occurred while updating status.")
+    }
   }
 
   if (!user) {
@@ -248,6 +271,7 @@ export default function AdminPage() {
                             <th className="py-2 px-4 text-white/70 text-sm">Customer</th>
                             <th className="py-2 px-4 text-white/70 text-sm">Price</th>
                             <th className="py-2 px-4 text-white/70 text-sm">Date</th>
+                            <th className="py-2 px-4 text-white/70 text-sm">Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -261,6 +285,23 @@ export default function AdminPage() {
                               </td>
                               <td className="py-3 px-4 text-white text-sm">{order.price}</td>
                               <td className="py-3 px-4 text-white/70 text-xs">{formatTimestamp(order.timestamp)}</td>
+                              <td className="py-3 px-4 text-sm">
+                                <Select
+                                  value={order.status}
+                                  onValueChange={(value: "pending" | "confirmed" | "cancelled") =>
+                                    handleStatusChange(order.id, value)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[140px] bg-white/10 border-white/20 text-white">
+                                    <SelectValue placeholder="Select Status" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-black/90 border-white/20 text-white">
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

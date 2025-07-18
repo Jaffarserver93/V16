@@ -14,6 +14,7 @@ import { LogOut, Settings, User, Crown, Shield } from "lucide-react"
 import { useToast } from "./notification-toast"
 import { db } from "@/lib/firebase" // Import Firestore
 import { doc, setDoc } from "firebase/firestore" // Import Firestore functions
+import Link from "next/link"
 
 interface DiscordUser {
   id: string
@@ -195,10 +196,12 @@ export function EnhancedDiscordLogin() {
               </div>
             </div>
             <DropdownMenuSeparator className="bg-white/20" />
-            <DropdownMenuItem className="text-white hover:bg-white/10">
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
+            <Link href="/profile">
+              <DropdownMenuItem className="text-white hover:bg-white/10 cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuItem className="text-white hover:bg-white/10">
               <Settings className="mr-2 h-4 w-4" />
               Settings
