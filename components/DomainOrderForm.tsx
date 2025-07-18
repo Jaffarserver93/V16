@@ -2,35 +2,34 @@
 
 import type React from "react"
 import { useState } from "react"
-import { ArrowLeft, User, Mail, MessageCircle, Send, CheckCircle, Server, ExternalLink, Zap, Copy } from "lucide-react"
+import { ArrowLeft, User, Mail, MessageCircle, Send, CheckCircle, Globe, ExternalLink, Copy } from "lucide-react"
 import { authManager, type AuthState } from "../utils/auth"
-import { superDatabase, type Coupon } from "../utils/database" // Import Coupon type
+import { superDatabase, type Coupon } from "../utils/database"
 
-interface VPSOrderFormProps {
-  selectedPlan: any
+interface DomainOrderFormProps {
+  selectedDomain: any
   onBack: () => void
   theme: string
 }
 
-const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme }) => {
+const DomainOrderForm: React.FC<DomainOrderFormProps> = ({ selectedDomain, onBack, theme }) => {
   const [authState] = useState<AuthState>(authManager.getAuthState())
   const [formData, setFormData] = useState({
     firstName: authManager.getFirstName(),
     lastName: authManager.getLastName(),
     email: authManager.getEmail(),
     discordUsername: authManager.getDiscordUsername(),
-    serverPurpose: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [orderId, setOrderId] = useState("")
   const [copied, setCopied] = useState(false)
   const [couponCode, setCouponCode] = useState("")
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null) // Use Coupon type
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
   const [couponError, setCouponError] = useState("")
 
   const generateOrderId = () => {
-    const prefix = "VPS"
+    const prefix = "DOM"
     const timestamp = Date.now().toString().slice(-6)
     const random = Math.random().toString(36).substring(2, 6).toUpperCase()
     return `${prefix}${timestamp}${random}`
@@ -45,12 +44,9 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
 
-    // Prevent editing Discord username if user is logged in
     if (name === "discordUsername" && authState.isAuthenticated) {
       return
     }
-
-    // Prevent editing email if user is logged in
     if (name === "email" && authState.isAuthenticated) {
       return
     }
@@ -81,7 +77,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
   }
 
   const calculateTotal = () => {
-    let basePrice = Number.parseInt(selectedPlan.price.replace(/[₹$,]/g, "").split("/")[0])
+    let basePrice = Number.parseFloat(selectedDomain.price.replace(/[₹$,]/g, ""))
 
     if (appliedCoupon) {
       if (appliedCoupon.discountType === "percentage") {
@@ -91,7 +87,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
       }
     }
 
-    return Math.round(basePrice)
+    return basePrice.toFixed(2)
   }
 
   const getThemeClasses = () => {
@@ -119,7 +115,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
         }
       default: // dark
         return {
-          bg: "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900",
+          bg: "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900", // Adjusted for domains page theme
           card: "bg-white/10 backdrop-blur-md border-white/20",
           text: "text-white",
           textSecondary: "text-gray-300",
@@ -131,24 +127,13 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
   }
   const themeStyles = getThemeClasses()
 
-  const getPlanTypeIcon = (planType: string) => {
-    switch (planType) {
-      case "budget":
-        return <Server className="w-5 h-5 text-green-400" />
-      case "powered":
-        return <Zap className="w-5 h-5 text-orange-400" />
-      default:
-        return <Server className="w-5 h-5 text-blue-400" />
-    }
-  }
-
   const sendToDiscord = async (generatedOrderId: string) => {
     const webhookUrl =
       "https://discord.com/api/webhooks/1393999338329604126/zo9VrQY1cyoLp4ZgLpf8BytjQKF_nH6rYgZHAVDhF8L2IIOod2fdbWv04ds072olZ6Wl"
     const orderDetails = {
       embeds: [
         {
-          title: "🖥️ New VPS Hosting Order!",
+          title: "🌐 New Domain Registration Order!",
           color: 0x7c3aed,
           fields: [
             {
@@ -162,13 +147,13 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
               inline: false,
             },
             {
-              name: "🖥️ VPS Plan Details",
-              value: `**Plan:** ${selectedPlan.name}\n**Type:** ${selectedPlan.planType || "Standard"}\n**RAM:** ${selectedPlan.ram}\n**CPU:** ${selectedPlan.cpu}\n**Storage:** ${selectedPlan.storage}\n**Bandwidth:** ${selectedPlan.bandwidth}${selectedPlan.processor ? `\n**Processor:** ${selectedPlan.processor}` : ""}${selectedPlan.network ? `\n**Network:** ${selectedPlan.network}` : ""}`,
+              name: "🌐 Domain Details",
+              value: `**Domain:** ${selectedDomain.domain}\n**Extension:** ${selectedDomain.extension}\n**Price:** ${selectedDomain.price}`,
               inline: true,
             },
             {
-              name: "💰 Pricing",
-              value: `**Price:** ${selectedPlan.price}${selectedPlan.priceUSD ? `\n**USD Price:** ${selectedPlan.priceUSD}` : ""}`,
+              name: "💰 Total Price",
+              value: `**Total:** $${calculateTotal()}/year`,
               inline: true,
             },
             {
@@ -178,15 +163,10 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                 : "None",
               inline: false,
             },
-            {
-              name: "🎯 Server Purpose",
-              value: `${formData.serverPurpose || "Not specified"}`,
-              inline: false,
-            },
           ],
           timestamp: new Date().toISOString(),
           footer: {
-            text: "JXFRCloud™ VPS Hosting",
+            text: "JXFRCloud™ Domain Registration",
           },
         },
       ],
@@ -223,18 +203,18 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
     if (user) {
       superDatabase.createOrder({
         userId: user.id,
-        type: "vps",
-        planName: selectedPlan.name,
-        price: `₹${calculateTotal()}/mo`,
+        type: "domain",
+        planName: selectedDomain.domain,
+        price: `$${calculateTotal()}/year`,
         status: "pending",
         customerInfo: formData,
         orderId: generatedOrderId,
-        couponUsed: appliedCoupon ? appliedCoupon.code : null, // Store coupon code
+        couponUsed: appliedCoupon ? appliedCoupon.code : null,
       })
     }
 
     // Use coupon if applied
-    const appliedCouponId = appliedCoupon?.id
+    const appliedCouponId = appliedCoupon ? appliedCoupon.id : null
     if (appliedCouponId) {
       await superDatabase.useCoupon(appliedCouponId)
     }
@@ -250,7 +230,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
           <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
             <CheckCircle className="w-8 h-8 text-white" />
           </div>
-          <h2 className={`text-xl sm:text-2xl font-bold ${themeStyles.text} mb-4`}>VPS Order Submitted!</h2>
+          <h2 className={`text-xl sm:text-2xl font-bold ${themeStyles.text} mb-4`}>Domain Order Submitted!</h2>
 
           {/* Order ID Display */}
           <div className={`${themeStyles.card} p-4 rounded-xl mb-6 border`}>
@@ -268,8 +248,8 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
             {copied && <p className="text-green-400 text-xs mt-2">Copied to clipboard!</p>}
           </div>
           <p className={`${themeStyles.textSecondary} mb-6 text-sm sm:text-base`}>
-            Your VPS hosting order has been received. Create a ticket on Discord with this ID{" "}
-            <strong>#{orderId}</strong> and our team will contact you to confirm your order and set up your server.
+            Your domain registration order has been received. Create a ticket on Discord with this ID{" "}
+            <strong>#{orderId}</strong> and our team will contact you to confirm your order.
           </p>
 
           <div className="mb-6">
@@ -281,7 +261,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
             >
               <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Join Discord Server
-              <ExternalLink className="w-3 h-3 sm:w-4 h-4 ml-2" />
+              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 ml-2" />
             </a>
             <p className={`text-xs sm:text-sm ${themeStyles.textSecondary}`}>
               Join our Discord server and create a ticket with your order ID to get support from our team.
@@ -291,7 +271,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
             onClick={onBack}
             className={`w-full ${themeStyles.button} text-white py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base`}
           >
-            Back to VPS Plans
+            Back to Domain Search
           </button>
         </div>
       </div>
@@ -307,64 +287,41 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
             className={`flex items-center ${themeStyles.textSecondary} hover:text-purple-400 transition-colors text-sm sm:text-base`}
           >
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-            Back to VPS Plans
+            Back to Domain Search
           </button>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
           {/* Order Summary */}
           <div className={`${themeStyles.card} rounded-2xl p-4 sm:p-6 h-fit order-2 xl:order-1`}>
-            <h2 className={`text-xl sm:text-2xl font-bold ${themeStyles.text} mb-4 sm:mb-6`}>VPS Summary</h2>
+            <h2 className={`text-xl sm:text-2xl font-bold ${themeStyles.text} mb-4 sm:mb-6`}>Domain Summary</h2>
 
             <div className="space-y-4 mb-4 sm:mb-6">
               <div className={`flex items-center space-x-3 sm:space-x-4 p-3 sm:p-4 ${themeStyles.card} rounded-xl`}>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                  {getPlanTypeIcon(selectedPlan.planType)}
+                  <Globe className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className={`text-base sm:text-lg font-semibold ${themeStyles.text} truncate`}>
-                    {selectedPlan.name}
+                    {selectedDomain.domain}
                   </h3>
-                  <p className={`${themeStyles.textSecondary} text-sm capitalize`}>
-                    {selectedPlan.planType || "Standard"} VPS
-                  </p>
+                  <p className={`${themeStyles.textSecondary} text-sm`}>{selectedDomain.extension} Domain</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className={`text-lg sm:text-xl font-bold ${themeStyles.text}`}>{calculateTotal()}</div>
-                  <div className={`text-xs sm:text-sm ${themeStyles.textSecondary}`}>/month</div>
-                  {selectedPlan.priceUSD && (
-                    <div className={`text-xs ${themeStyles.textMuted}`}>{selectedPlan.priceUSD}</div>
-                  )}
+                  <div className={`text-lg sm:text-xl font-bold ${themeStyles.text}`}>
+                    ${selectedDomain.price.replace(/[₹$,]/g, "")}
+                  </div>
+                  <div className={`text-xs sm:text-sm ${themeStyles.textSecondary}`}>/year</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
                 <div className={`flex justify-between ${themeStyles.textSecondary}`}>
-                  <span>RAM:</span>
-                  <span className="font-medium">{selectedPlan.ram}</span>
+                  <span>Availability:</span>
+                  <span className="font-medium">{selectedDomain.available ? "Available" : "Taken"}</span>
                 </div>
                 <div className={`flex justify-between ${themeStyles.textSecondary}`}>
-                  <span>CPU:</span>
-                  <span className="font-medium">{selectedPlan.cpu}</span>
+                  <span>Registration Period:</span>
+                  <span className="font-medium">1 Year</span>
                 </div>
-                <div className={`flex justify-between ${themeStyles.textSecondary}`}>
-                  <span>Storage:</span>
-                  <span className="font-medium">{selectedPlan.storage}</span>
-                </div>
-                <div className={`flex justify-between ${themeStyles.textSecondary}`}>
-                  <span>Bandwidth:</span>
-                  <span className="font-medium">{selectedPlan.bandwidth}</span>
-                </div>
-                {selectedPlan.processor && (
-                  <div className={`flex justify-between ${themeStyles.textSecondary} col-span-2`}>
-                    <span>Processor:</span>
-                    <span className="font-medium">{selectedPlan.processor}</span>
-                  </div>
-                )}
-                {selectedPlan.network && (
-                  <div className={`flex justify-between ${themeStyles.textSecondary} col-span-2`}>
-                    <span>Network:</span>
-                    <span className="font-medium">{selectedPlan.network}</span>
-                  </div>
-                )}
               </div>
             </div>
             <div className={`border-t ${theme === "light" ? "border-gray-200" : "border-white/20"} pt-4`}>
@@ -395,7 +352,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                         -
                         {appliedCoupon.discountType === "percentage"
                           ? `${appliedCoupon.discountValue}%`
-                          : `₹${appliedCoupon.discountValue}`}
+                          : `$${appliedCoupon.discountValue}`}
                       </span>
                     </div>
                     <button onClick={removeCoupon} className="text-red-400 hover:text-red-300 text-sm">
@@ -410,13 +367,10 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                 <div className="text-right">
                   {appliedCoupon && (
                     <div className={`text-sm ${themeStyles.textMuted} line-through mb-1`}>
-                      {selectedPlan.price.replace(/[₹$,]/g, "").split("/")[0]}
+                      ${selectedDomain.price.replace(/[₹$,]/g, "")}/year
                     </div>
                   )}
-                  <span className="text-xl sm:text-2xl font-bold text-purple-400">₹{calculateTotal()}/mo</span>
-                  {selectedPlan.priceUSD && (
-                    <div className={`text-sm ${themeStyles.textMuted}`}>{selectedPlan.priceUSD}</div>
-                  )}
+                  <span className="text-xl sm:text-2xl font-bold text-purple-400">${calculateTotal()}/year</span>
                 </div>
               </div>
             </div>
@@ -429,11 +383,11 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                 What's Included:
               </h4>
               <ul className={`text-xs sm:text-sm ${theme === "light" ? "text-blue-700" : "text-blue-200"} space-y-1`}>
-                <li>• Root Access & Full Control</li>
-                <li>• DDoS Protection</li>
+                <li>• Free WHOIS Privacy</li>
+                <li>• DNS Management</li>
+                <li>• Email Forwarding</li>
                 <li>• 24/7 Support</li>
-                <li>• Instant Setup</li>
-                <li>• 99.9% Uptime SLA</li>
+                <li>• Easy Transfer</li>
               </ul>
             </div>
           </div>
@@ -520,20 +474,6 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                   </p>
                 )}
               </div>
-              <div>
-                <label className={`block text-xs sm:text-sm font-medium ${themeStyles.textSecondary} mb-2`}>
-                  <Server className="w-3 h-3 sm:w-4 sm:h-4 inline mr-2" />
-                  Server Purpose (Optional)
-                </label>
-                <textarea
-                  name="serverPurpose"
-                  value={formData.serverPurpose}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 ${themeStyles.input} border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base resize-none`}
-                  placeholder="What will you use this VPS for? (e.g., web hosting, development, applications)"
-                />
-              </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -547,7 +487,7 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
                 ) : (
                   <div className="flex items-center">
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    Submit VPS Order
+                    Submit Domain Order
                   </div>
                 )}
               </button>
@@ -559,4 +499,4 @@ const VPSOrderForm: React.FC<VPSOrderFormProps> = ({ selectedPlan, onBack, theme
   )
 }
 
-export default VPSOrderForm
+export default DomainOrderForm

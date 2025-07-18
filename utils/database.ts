@@ -1,5 +1,6 @@
 import { db } from "@/lib/firebase" // Import Firestore
-import { collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from "firebase/firestore"
+import { getCouponByCode } from "@/actions/coupon" // Import the new action
 
 export interface AuthState {
   isAuthenticated: boolean
@@ -8,6 +9,19 @@ export interface AuthState {
     username: string
     email: string
   }
+}
+
+export interface Coupon {
+  id?: string // Firestore document ID
+  code: string
+  discountType: "percentage" | "fixed"
+  discountValue: number
+  expiresAt: Date | null
+  usageLimit: number | null
+  usageCount: number
+  isActive: boolean
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 // Mock auth manager for now (will be updated by EnhancedDiscordLogin)
@@ -46,15 +60,40 @@ export const authManager = {
 
 // Firebase-integrated database operations
 export const superDatabase = {
-  validateCoupon: (code: string) => {
-    // Mock coupon validation
-    if (code === "WELCOME10") {
-      return { code, discountType: "percentage", discountValue: 10 }
+  validateCoupon: async (code: string): Promise<Coupon | null> => {
+    const coupon = await getCouponByCode(code)
+    if (!coupon) {
+      return null // Coupon not found
     }
-    return null
+
+    // Check if active
+    if (!coupon.isActive) {
+      return null
+    }
+
+    // Check expiry date
+    if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+      return null
+    }
+
+    // Check usage limit
+    if (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit) {
+      return null
+    }
+
+    return coupon
   },
-  useCoupon: (code: string) => {
-    console.log("Using coupon:", code)
+  useCoupon: async (couponId: string) => {
+    try {
+      const couponRef = doc(db, "coupons", couponId)
+      await updateDoc(couponRef, {
+        usageCount: (await getCouponByCode(couponId))?.usageCount + 1, // Increment usage count
+        updatedAt: serverTimestamp(),
+      })
+      console.log("Coupon usage incremented for:", couponId)
+    } catch (error) {
+      console.error("Error incrementing coupon usage:", error)
+    }
   },
   getUserByDiscordId: async (id: string) => {
     try {
