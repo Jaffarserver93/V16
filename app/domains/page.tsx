@@ -1,12 +1,13 @@
 "use client"
 
+import type React from "react"
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Card, CardContent, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Search, CheckCircle, XCircle, ArrowRight, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Search, CheckCircle, XCircle, ArrowLeft, Loader2 } from "lucide-react"
-import DomainOrderForm from "@/components/DomainOrderForm" // Import the new form
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import DomainOrderForm from "@/components/DomainOrderForm"
 
 interface Domain {
   name: string
@@ -18,149 +19,204 @@ export default function DomainsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState<Domain[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchPerformed, setSearchPerformed] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [selectedDomainForOrder, setSelectedDomainForOrder] = useState<Domain | null>(null)
 
-  const handleSearch = async () => {
+  const domainExtensions = [
+    { extension: ".com", price: 12.99 },
+    { extension: ".net", price: 14.99 },
+    { extension: ".org", price: 10.99 },
+    { extension: ".xyz", price: 2.99 },
+    { extension: ".cloud", price: 19.99 },
+    { extension: ".io", price: 39.99 },
+    { extension: ".dev", price: 15.99 },
+    { extension: ".app", price: 17.99 },
+  ]
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLoading(true)
-    setSearchPerformed(true)
-    setSearchResults([]) // Clear previous results
-    setShowForm(false) // Hide form on new search
-    setSelectedDomainForOrder(null) // Clear selected domain
+    setSearchResults([])
+    setShowForm(false) // Hide form when searching
+
+    if (!searchTerm.trim()) {
+      setLoading(false)
+      return
+    }
 
     // Simulate API call for domain availability
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    const mockDomains: Domain[] = [
-      { name: `${searchTerm}.com`, price: 12.99, available: true },
-      { name: `${searchTerm}.net`, price: 10.49, available: Math.random() > 0.5 },
-      { name: `${searchTerm}.org`, price: 9.99, available: Math.random() > 0.5 },
-      { name: `${searchTerm}.io`, price: 39.99, available: Math.random() > 0.7 },
-      { name: `${searchTerm}.xyz`, price: 2.99, available: true },
-    ]
+    const baseDomain = searchTerm.toLowerCase().replace(/[^a-z0-9-]/g, "") // Sanitize input
+    if (!baseDomain) {
+      setLoading(false)
+      return
+    }
 
-    setSearchResults(mockDomains)
+    const results: Domain[] = domainExtensions.map((ext) => {
+      const fullDomain = `${baseDomain}${ext.extension}`
+      // Simulate availability: some domains are taken, some are available
+      const isAvailable = Math.random() > 0.3 // 70% chance of being available
+      return {
+        name: fullDomain,
+        price: ext.price,
+        available: isAvailable,
+      }
+    })
+    setSearchResults(results)
     setLoading(false)
   }
 
-  const handleRegisterClick = (domain: Domain) => {
+  const handleSelectDomain = (domain: Domain) => {
     setSelectedDomainForOrder(domain)
     setShowForm(true)
   }
 
   if (showForm && selectedDomainForOrder) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 sm:p-8">
-        <div className="max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6"
-          >
-            <Button
-              variant="ghost"
-              onClick={() => setShowForm(false)}
-              className="text-white/70 hover:text-white flex items-center"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Search Results
-            </Button>
-          </motion.div>
-          <DomainOrderForm domain={selectedDomainForOrder} />
-        </div>
-      </div>
-    )
+    return <DomainOrderForm selectedDomain={selectedDomainForOrder} onBack={() => setShowForm(false)} theme="dark" />
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto text-center">
         <motion.h1
-          initial={{ opacity: 0, y: -50 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-4xl font-bold text-center mb-8"
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-5xl font-bold mb-4"
         >
           Find Your Perfect Domain
         </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-lg md:text-xl text-white/80 mb-8"
+        >
+          Search for available domain names and register them instantly.
+        </motion.p>
 
-        <motion.div
+        <motion.form
+          onSubmit={handleSearch}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8 shadow-lg"
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="flex flex-col sm:flex-row gap-4 mb-12 max-w-xl mx-auto"
         >
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Input
-              type="text"
-              placeholder="Enter your desired domain name (e.g., myawesomeproject)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-grow bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:ring-purple-500"
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch()
-                }
-              }}
-            />
-            <Button
-              onClick={handleSearch}
-              disabled={loading || searchTerm.trim() === ""}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Search className="w-5 h-5 mr-2" />}
-              Search Domains
-            </Button>
-          </div>
-        </motion.div>
+          <Input
+            type="text"
+            placeholder="Enter your desired domain name (e.g., mywebsite)"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:ring-purple-500 py-3 px-4 text-base"
+            required
+          />
+          <Button
+            type="submit"
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 px-6 rounded-lg font-semibold text-base"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Searching...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <Search className="w-5 h-5 mr-2" /> Search Domain
+              </span>
+            )}
+          </Button>
+        </motion.form>
 
-        {searchPerformed && (
+        {searchResults.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-lg"
+            transition={{ duration: 0.6 }}
+            className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 shadow-lg"
           >
-            <h2 className="text-2xl font-bold text-white mb-6">Search Results</h2>
-            {loading ? (
-              <div className="text-center py-10">
-                <Loader2 className="w-10 h-10 animate-spin text-purple-500 mx-auto mb-4" />
-                <p className="text-white/70">Searching for domains...</p>
-              </div>
-            ) : searchResults.length === 0 ? (
-              <p className="text-white/70 text-center">No domains found for "{searchTerm}". Try a different name.</p>
-            ) : (
-              <div className="space-y-4">
-                {searchResults.map((domain) => (
-                  <Card key={domain.name} className="bg-white/5 border-white/10 flex items-center justify-between p-4">
-                    <CardContent className="flex items-center p-0">
-                      {domain.available ? (
-                        <CheckCircle className="w-6 h-6 text-green-400 mr-3" />
-                      ) : (
-                        <XCircle className="w-6 h-6 text-red-400 mr-3" />
-                      )}
-                      <div>
-                        <CardTitle className="text-lg font-semibold text-white">{domain.name}</CardTitle>
-                        <p className="text-white/70 text-sm">{domain.available ? "Available" : "Not Available"}</p>
-                      </div>
-                    </CardContent>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xl font-bold text-white">${domain.price.toFixed(2)}</span>
+            <h2 className="text-2xl font-bold text-left mb-6">Search Results for "{searchTerm}"</h2>
+            <div className="space-y-4">
+              {searchResults.map((domain, index) => (
+                <motion.div
+                  key={domain.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  className="flex flex-col sm:flex-row items-center justify-between bg-white/5 border border-white/10 rounded-lg p-4"
+                >
+                  <div className="flex items-center mb-2 sm:mb-0">
+                    {domain.available ? (
+                      <CheckCircle className="w-6 h-6 text-green-400 mr-3" />
+                    ) : (
+                      <XCircle className="w-6 h-6 text-red-400 mr-3" />
+                    )}
+                    <span className="text-lg font-semibold">{domain.name}</span>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-xl font-bold text-purple-400">${domain.price.toFixed(2)}/year</span>
+                    {domain.available ? (
                       <Button
-                        disabled={!domain.available}
-                        onClick={() => handleRegisterClick(domain)}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        onClick={() => handleSelectDomain(domain)}
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center"
                       >
-                        {domain.available ? "Register Now" : "Unavailable"}
+                        Register Now <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+                    ) : (
+                      <Button disabled className="bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold">
+                        Taken
+                      </Button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         )}
+
+        {loading && searchResults.length === 0 && searchTerm.trim() !== "" && (
+          <div className="text-center mt-8">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-400 mx-auto mb-4" />
+            <p className="text-lg text-white/70">Searching for domains...</p>
+          </div>
+        )}
+
+        {!loading && searchResults.length === 0 && searchTerm.trim() !== "" && (
+          <div className="text-center mt-8">
+            <p className="text-lg text-white/70">No domains found for "{searchTerm}". Try a different name.</p>
+          </div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6"
+        >
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold">Why Register with Us?</CardTitle>
+            </CardHeader>
+            <CardContent className="text-left text-white/80 space-y-2">
+              <p>• Free WHOIS Privacy Protection</p>
+              <p>• Easy DNS Management Tools</p>
+              <p>• 24/7 Expert Support</p>
+              <p>• Seamless Integration with Hosting</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20 text-white">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold">Popular Extensions</CardTitle>
+            </CardHeader>
+            <CardContent className="text-left text-white/80 space-y-2">
+              {domainExtensions.slice(0, 5).map((ext) => (
+                <p key={ext.extension}>
+                  • {ext.extension} - ${ext.price.toFixed(2)}/year
+                </p>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   )

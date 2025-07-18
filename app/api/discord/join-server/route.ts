@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
-  const { userId, accessToken } = await request.json()
+  const { accessToken, userId, guildId } = await request.json()
 
-  if (!userId || !accessToken) {
-    return NextResponse.json({ error: "Missing userId or accessToken" }, { status: 400 })
-  }
-
-  const botToken = process.env.DISCORD_BOT_TOKEN
-  const guildId = process.env.DISCORD_GUILD_ID
-
-  if (!botToken || !guildId) {
-    return NextResponse.json({ error: "Server not configured for Discord bot" }, { status: 500 })
+  if (!accessToken || !userId || !guildId) {
+    return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
   }
 
   try {
+    const botToken = process.env.DISCORD_BOT_TOKEN
+    if (!botToken) {
+      throw new Error("Discord bot token not configured.")
+    }
+
     // Add user to guild
-    const addMemberResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
+    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
       method: "PUT",
       headers: {
         Authorization: `Bot ${botToken}`,
@@ -27,16 +25,16 @@ export async function POST(request: Request) {
       }),
     })
 
-    if (!addMemberResponse.ok) {
-      const errorData = await addMemberResponse.json()
-      console.error("Failed to add member to guild:", errorData)
+    if (response.ok) {
+      return NextResponse.json({ message: "User added to guild successfully" })
+    } else {
+      const errorData = await response.json()
+      console.error("Failed to add user to guild:", errorData)
       return NextResponse.json(
-        { error: "Failed to add user to Discord server", details: errorData },
-        { status: addMemberResponse.status },
+        { error: "Failed to add user to guild", details: errorData },
+        { status: response.status },
       )
     }
-
-    return NextResponse.json({ message: "User successfully added to Discord server" })
   } catch (error) {
     console.error("Error joining Discord server:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -1,10 +1,9 @@
 "use client"
 
-import { ToastProvider, ToastViewport } from "@radix-ui/react-toast"
+import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
-import { Toast, ToastClose, ToastDescription, ToastTitle } from "@/components/ui/toast"
 
-export function NotificationToast() {
+export function Toaster() {
   const { toasts } = useToast()
 
   return (

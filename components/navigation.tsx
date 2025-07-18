@@ -1,79 +1,149 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { motion } from "framer-motion"
-import { Crown, Server, Gamepad2, Globe } from "lucide-react"
-import { EnhancedDiscordLogin } from "./enhanced-discord-login"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MenuIcon } from "lucide-react"
+import { useState, useEffect } from "react"
+import { authManager } from "@/utils/auth"
+import { useRouter } from "next/navigation"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
-export function Navigation() {
-  const pathname = usePathname()
+export default function Navigation() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [username, setUsername] = useState("")
+  const router = useRouter()
 
-  const getIcon = () => {
-    if (pathname === "/minecraft") return <Gamepad2 className="w-5 h-5 text-white" />
-    if (pathname === "/vps") return <Server className="w-5 h-5 text-white" />
-    if (pathname === "/domains") return <Globe className="w-5 h-5 text-white" />
-    return <Crown className="w-5 h-5 text-white" />
-  }
+  useEffect(() => {
+    const authState = authManager.getAuthState()
+    setIsLoggedIn(authState.isAuthenticated)
+    if (authState.isAuthenticated && authState.user) {
+      setUsername(authState.user.username)
+    }
+  }, [])
 
-  const getTitle = () => {
-    if (pathname === "/minecraft") return "HostPro Minecraft"
-    if (pathname === "/vps") return "HostPro VPS"
-    if (pathname === "/domains") return "HostPro Domains"
-    return "HostPro"
-  }
-
-  const getGradient = () => {
-    if (pathname === "/minecraft") return "from-green-500 to-emerald-500"
-    if (pathname === "/vps") return "from-blue-500 to-cyan-500"
-    if (pathname === "/domains") return "from-purple-500 to-pink-500"
-    return "from-purple-500 to-pink-500"
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      localStorage.removeItem("discord_user") // Clear local storage
+      setIsLoggedIn(false)
+      setUsername("")
+      router.push("/") // Redirect to homepage
+    } catch (error) {
+      console.error("Error logging out:", error)
+    }
   }
 
   return (
-    <motion.nav
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-xl border-b border-white/10"
-    >
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className={`w-8 h-8 bg-gradient-to-r ${getGradient()} rounded-lg flex items-center justify-center`}>
-            {getIcon()}
-          </div>
-          <span className="text-xl font-bold text-white">{getTitle()}</span>
+    <header className="w-full py-4 px-4 md:px-6 flex items-center justify-between bg-gradient-to-r from-slate-900 to-purple-900 text-white shadow-lg">
+      <Link href="/" className="flex items-center gap-2" prefetch={false}>
+        <img src="/logo.webp" alt="JXFRCloud Logo" className="h-8 w-auto" />
+        <span className="text-2xl font-bold">JXFRCloud</span>
+      </Link>
+      <nav className="hidden md:flex items-center gap-6">
+        <Link href="/" className="text-lg font-medium hover:text-purple-400 transition-colors" prefetch={false}>
+          Home
         </Link>
-
-        <div className="hidden md:flex items-center space-x-8">
-          <Link
-            href="/minecraft"
-            className={`transition-colors ${pathname === "/minecraft" ? "text-green-400" : "text-white/80 hover:text-white"}`}
-          >
-            Minecraft
+        <Link
+          href="/minecraft"
+          className="text-lg font-medium hover:text-purple-400 transition-colors"
+          prefetch={false}
+        >
+          Minecraft
+        </Link>
+        <Link href="/vps" className="text-lg font-medium hover:text-purple-400 transition-colors" prefetch={false}>
+          VPS
+        </Link>
+        <Link href="/domains" className="text-lg font-medium hover:text-purple-400 transition-colors" prefetch={false}>
+          Domains
+        </Link>
+        <Link href="/contact" className="text-lg font-medium hover:text-purple-400 transition-colors" prefetch={false}>
+          Contact
+        </Link>
+        {isLoggedIn ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="border-white text-white hover:bg-white/10 bg-transparent">
+                {username}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-slate-800 border-slate-700 text-white">
+              <DropdownMenuItem>
+                <Link href="/profile" className="w-full block">
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link href="/admin" className="w-full block">
+                  Admin
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Link href="/auth/discord" prefetch={false}>
+            <Button className="bg-purple-600 hover:bg-purple-700 text-white">Login with Discord</Button>
           </Link>
-          <Link
-            href="/vps"
-            className={`transition-colors ${pathname === "/vps" ? "text-blue-400" : "text-white/80 hover:text-white"}`}
-          >
-            VPS
-          </Link>
-          <Link
-            href="/domains"
-            className={`transition-colors ${pathname === "/domains" ? "text-purple-400" : "text-white/80 hover:text-white"}`}
-          >
-            Domains
-          </Link>
-          <Link
-            href="/"
-            className={`transition-colors ${pathname === "/" ? "text-purple-400" : "text-white/80 hover:text-white"}`}
-          >
-            Home
-          </Link>
-        </div>
-
-        <EnhancedDiscordLogin />
-      </div>
-    </motion.nav>
+        )}
+      </nav>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="md:hidden text-white">
+            <MenuIcon className="h-6 w-6" />
+            <span className="sr-only">Toggle navigation menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-60 bg-slate-800 border-slate-700 text-white">
+          <DropdownMenuItem>
+            <Link href="/" className="w-full block" prefetch={false}>
+              Home
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/minecraft" className="w-full block" prefetch={false}>
+              Minecraft
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/vps" className="w-full block" prefetch={false}>
+              VPS
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/domains" className="w-full block" prefetch={false}>
+              Domains
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href="/contact" className="w-full block" prefetch={false}>
+              Contact
+            </Link>
+          </DropdownMenuItem>
+          {isLoggedIn ? (
+            <>
+              <DropdownMenuItem>
+                <Link href="/profile" className="w-full block">
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link href="/admin" className="w-full block">
+                  Admin
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem>
+              <Link href="/auth/discord" className="w-full block" prefetch={false}>
+                Login with Discord
+              </Link>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </header>
   )
 }

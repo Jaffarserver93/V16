@@ -162,16 +162,16 @@ export default function VPSOrderForm({ plan }: VPSOrderFormProps) {
         })
       }
 
-      // Increment coupon usage if applied
-      if (appliedCoupon && appliedCoupon.id) {
-        await superDatabase.useCoupon(appliedCoupon.id)
-      }
-
       setOrderSuccess(true)
       toast({
         title: "Order Placed!",
         description: `Your VPS order for ${plan.name} has been successfully placed. Order ID: ${orderDetails.orderId}`,
       })
+
+      // Increment coupon usage if applied
+      if (appliedCoupon && appliedCoupon.id) {
+        await superDatabase.useCoupon(appliedCoupon.id)
+      }
     } catch (error) {
       console.error("Order submission error:", error)
       toast({

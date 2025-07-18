@@ -1,21 +1,13 @@
-import { authManager } from "./database"
+import { authManager as dbAuthManager } from "./database" // Import from database.ts
 
-export function getAuthStatus() {
-  return authManager.getAuthState()
+export interface AuthState {
+  isAuthenticated: boolean
+  user?: {
+    id: string
+    username: string
+    email: string
+  }
 }
 
-export function getFirstName() {
-  return authManager.getFirstName()
-}
-
-export function getLastName() {
-  return authManager.getLastName()
-}
-
-export function getEmail() {
-  return authManager.getEmail()
-}
-
-export function getDiscordUsername() {
-  return authManager.getDiscordUsername()
-}
+// Re-export authManager from database.ts
+export const authManager = dbAuthManager
