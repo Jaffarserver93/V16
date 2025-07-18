@@ -1,17 +1,21 @@
-export interface AuthState {
-  isAuthenticated: boolean
-  user?: {
-    id: string
-    username: string
-    email: string
-  }
+import { authManager } from "./database"
+
+export function getAuthStatus() {
+  return authManager.getAuthState()
 }
 
-// Mock auth manager for now
-export const authManager = {
-  getAuthState: (): AuthState => ({ isAuthenticated: false }),
-  getFirstName: () => "",
-  getLastName: () => "",
-  getEmail: () => "",
-  getDiscordUsername: () => "",
+export function getFirstName() {
+  return authManager.getFirstName()
+}
+
+export function getLastName() {
+  return authManager.getLastName()
+}
+
+export function getEmail() {
+  return authManager.getEmail()
+}
+
+export function getDiscordUsername() {
+  return authManager.getDiscordUsername()
 }

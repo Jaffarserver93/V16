@@ -1,38 +1,44 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  const { userId, accessToken } = await request.json()
+
+  if (!userId || !accessToken) {
+    return NextResponse.json({ error: "Missing userId or accessToken" }, { status: 400 })
+  }
+
+  const botToken = process.env.DISCORD_BOT_TOKEN
+  const guildId = process.env.DISCORD_GUILD_ID
+
+  if (!botToken || !guildId) {
+    return NextResponse.json({ error: "Server not configured for Discord bot" }, { status: 500 })
+  }
+
   try {
-    const { access_token, guild_id } = await request.json()
-
-    // Get user ID first
-    const userResponse = await fetch("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `Bearer ${access_token}`,
-      },
-    })
-
-    const userData = await userResponse.json()
-
     // Add user to guild
-    const joinResponse = await fetch(`https://discord.com/api/guilds/${guild_id}/members/${userData.id}`, {
+    const addMemberResponse = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
       method: "PUT",
       headers: {
-        Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+        Authorization: `Bot ${botToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        access_token,
+        access_token: accessToken,
       }),
     })
 
-    if (joinResponse.ok || joinResponse.status === 204) {
-      return NextResponse.json({ success: true })
-    } else {
-      const errorData = await joinResponse.json()
-      throw new Error(errorData.message || "Failed to join server")
+    if (!addMemberResponse.ok) {
+      const errorData = await addMemberResponse.json()
+      console.error("Failed to add member to guild:", errorData)
+      return NextResponse.json(
+        { error: "Failed to add user to Discord server", details: errorData },
+        { status: addMemberResponse.status },
+      )
     }
+
+    return NextResponse.json({ message: "User successfully added to Discord server" })
   } catch (error) {
-    console.error("Discord server join error:", error)
-    return NextResponse.json({ error: "Failed to join Discord server" }, { status: 500 })
+    console.error("Error joining Discord server:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

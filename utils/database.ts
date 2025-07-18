@@ -86,11 +86,16 @@ export const superDatabase = {
   useCoupon: async (couponId: string) => {
     try {
       const couponRef = doc(db, "coupons", couponId)
-      await updateDoc(couponRef, {
-        usageCount: (await getCouponByCode(couponId))?.usageCount + 1, // Increment usage count
-        updatedAt: serverTimestamp(),
-      })
-      console.log("Coupon usage incremented for:", couponId)
+      const currentCoupon = await getCouponByCode(couponId) // Fetch current state to get usageCount
+      if (currentCoupon) {
+        await updateDoc(couponRef, {
+          usageCount: currentCoupon.usageCount + 1, // Increment usage count
+          updatedAt: serverTimestamp(),
+        })
+        console.log("Coupon usage incremented for:", couponId)
+      } else {
+        console.warn("Attempted to use a coupon that no longer exists:", couponId)
+      }
     } catch (error) {
       console.error("Error incrementing coupon usage:", error)
     }

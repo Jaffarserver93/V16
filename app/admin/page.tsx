@@ -26,11 +26,11 @@ import {
   Trash2,
   ToggleRight,
   ToggleLeft,
-} from "lucide-react" // Added coupon icons
+} from "lucide-react"
 import { motion } from "framer-motion"
 import { updateOrderStatus } from "@/actions/order"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createCoupon, updateCoupon, deleteCoupon, getCoupons, type Coupon } from "@/actions/coupon" // Import coupon actions
+import { createCoupon, updateCoupon, deleteCoupon, getCoupons, type Coupon } from "@/actions/coupon"
 
 interface Order {
   orderId: string
@@ -120,7 +120,7 @@ export default function AdminPage() {
       setCoupons(fetchedCoupons)
     } catch (err) {
       console.error("Error fetching coupons:", err)
-      setCouponError("Failed to load coupons.")
+      setCouponError("Failed to load coupons. Please ensure your Firestore rules allow admin to read all coupons.")
     } finally {
       setLoadingCoupons(false)
     }
