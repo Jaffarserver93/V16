@@ -37,12 +37,14 @@ export default function DiscordCallback() {
 
         // Store user data in localStorage for parent window
         localStorage.setItem("discord_auth", JSON.stringify(data))
+        setTimeout(() => window.close(), 500)
 
         // Close popup
         window.close()
       }
     } catch (error) {
       console.error("Token exchange error:", error)
+      setTimeout(() => window.close(), 500)
       window.close()
     }
   }
