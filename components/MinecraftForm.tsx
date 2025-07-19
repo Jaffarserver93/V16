@@ -20,7 +20,7 @@ import {
 } from "lucide-react"
 
 import { authManager, type AuthState } from "../utils/auth"
-import { superDatabase } from "../utils/database"
+import { superDatabase, type Coupon } from "../utils/database" // Import Coupon type
 
 interface PaymentFormProps {
   selectedPlan: any
@@ -44,7 +44,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPlan, selectedAddons,
   const [orderId, setOrderId] = useState("")
   const [copied, setCopied] = useState(false)
   const [couponCode, setCouponCode] = useState("")
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null) // Use Coupon type
   const [couponError, setCouponError] = useState("")
 
   const generateOrderId = () => {
@@ -86,15 +86,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPlan, selectedAddons,
     }))
   }
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return
 
-    const coupon = superDatabase.validateCoupon(couponCode.trim().toUpperCase())
+    const coupon = await superDatabase.validateCoupon(couponCode.trim().toUpperCase())
     if (coupon) {
       setAppliedCoupon(coupon)
       setCouponError("")
     } else {
-      setCouponError("Invalid or expired coupon code")
+      setCouponError("Invalid, expired, or used coupon code")
       setAppliedCoupon(null)
     }
   }
@@ -210,6 +210,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPlan, selectedAddons,
               inline: true,
             },
             {
+              name: "🏷️ Coupon Applied",
+              value: appliedCoupon
+                ? `${appliedCoupon.code} (-${appliedCoupon.discountType === "percentage" ? `${appliedCoupon.discountValue}%` : `$${appliedCoupon.discountValue}`})`
+                : "None",
+              inline: false,
+            },
+            {
               name: "🎮 Server Details",
               value: `**Server Name:** ${formData.serverName || "Not specified"}`,
               inline: false,
@@ -255,11 +262,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPlan, selectedAddons,
       user = superDatabase.getUserByDiscordId(authState.user.id)
     }
 
-    // Use coupon if applied
-    if (appliedCoupon) {
-      superDatabase.useCoupon(appliedCoupon.code)
-    }
-
     if (user) {
       superDatabase.createOrder({
         userId: user.id,
@@ -269,8 +271,15 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ selectedPlan, selectedAddons,
         status: "pending",
         customerInfo: formData,
         orderId: generatedOrderId,
+        couponUsed: appliedCoupon ? appliedCoupon.code : null, // Store coupon code
       })
     }
+
+    // Use coupon if applied
+    const useCouponPromise =
+      appliedCoupon && appliedCoupon.id ? superDatabase.useCoupon(appliedCoupon.id) : Promise.resolve()
+
+    await useCouponPromise
 
     await sendToDiscord(generatedOrderId)
     setIsSubmitting(false)
